@@ -9,9 +9,17 @@ from keepr.config import KeeprConfig, S3Config
 from keepr import output
 
 
+def _build_key(s3_config: S3Config, s3_key: str) -> str:
+    """Combine prefix + key safely, treating prefix as a folder path
+    (trailing slash is added; leading/trailing slashes in user input are tolerated)."""
+    prefix = (s3_config.prefix or "").strip().strip("/")
+    key = (s3_key or "").lstrip("/")
+    return f"{prefix}/{key}" if prefix else key
+
+
 def upload_to_s3(s3_config: S3Config, local_path: Path, s3_key: str) -> None:
     client = _get_s3_client(s3_config)
-    full_key = f"{s3_config.prefix}{s3_key}" if s3_config.prefix else s3_key
+    full_key = _build_key(s3_config, s3_key)
 
     output.info(f"Uploading to S3: {s3_config.bucket}/{full_key}")
     client.upload_file(str(local_path), s3_config.bucket, full_key)
@@ -20,7 +28,7 @@ def upload_to_s3(s3_config: S3Config, local_path: Path, s3_key: str) -> None:
 
 def download_from_s3(s3_config: S3Config, s3_key: str, local_path: Path) -> None:
     client = _get_s3_client(s3_config)
-    full_key = f"{s3_config.prefix}{s3_key}" if s3_config.prefix else s3_key
+    full_key = _build_key(s3_config, s3_key)
 
     local_path.parent.mkdir(parents=True, exist_ok=True)
     output.info(f"Downloading from S3: {s3_config.bucket}/{full_key}")
@@ -30,7 +38,7 @@ def download_from_s3(s3_config: S3Config, s3_key: str, local_path: Path) -> None
 
 def delete_from_s3(s3_config: S3Config, s3_key: str) -> None:
     client = _get_s3_client(s3_config)
-    full_key = f"{s3_config.prefix}{s3_key}" if s3_config.prefix else s3_key
+    full_key = _build_key(s3_config, s3_key)
 
     client.delete_object(Bucket=s3_config.bucket, Key=full_key)
 

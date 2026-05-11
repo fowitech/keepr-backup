@@ -384,7 +384,7 @@ def server_list(config: ConfigOption = None):
 
 @app.command()
 def run(
-    job_names: Annotated[Optional[list[str]], typer.Argument(help="Job names (e.g. 'keepr run cortex'). Runs all if omitted.")] = None,
+    job_names: Annotated[Optional[list[str]], typer.Argument(help="Job names (e.g. 'keepr run myapp'). Runs all if omitted.")] = None,
     all_jobs: Annotated[bool, typer.Option("--all", help="Run all jobs")] = False,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without executing")] = False,
     config: ConfigOption = None,
@@ -830,7 +830,9 @@ def _prompt_s3_config() -> dict:
     """Prompt for S3 config fields and return dict."""
     bucket = typer.prompt("    S3 bucket")
     region = typer.prompt("    Region", default="eu-central-1")
-    prefix = typer.prompt("    Prefix", default="keepr/")
+    prefix_raw = typer.prompt("    Prefix (folder, e.g. 'keepr' — empty = bucket root)", default="keepr")
+    # Normalize: strip slashes/spaces; storage adds the separator itself.
+    prefix = prefix_raw.strip().strip("/")
     access_key = typer.prompt("    Access Key ID (empty = from env)", default="", show_default=False)
     secret_key = typer.prompt("    Secret Access Key (empty = from env)", default="", show_default=False)
     endpoint = typer.prompt("    Endpoint URL (optional, for MinIO)", default="")

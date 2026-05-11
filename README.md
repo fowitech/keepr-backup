@@ -69,7 +69,7 @@ Welcome to keepr!
 
 3. Backup jobs
    Add a backup job? [Y/n]: y
-   Name: cortex
+   Name: myapp
    Server: 1) production
    What to backup?
      1) Database
@@ -79,11 +79,11 @@ Welcome to keepr!
 
    -- Database --
    Engine: postgres
-   DB name: cortex
+   DB name: myapp
    DB user [postgres]:
 
    -- Files --
-   Directories: /var/www/cortex/uploads
+   Directories: /var/www/myapp/uploads
    Exclude patterns: *.tmp
 
    Where to save?
@@ -169,23 +169,23 @@ A job can backup a database, files, or both:
 ```yaml
 jobs:
   # Database + Files together
-  cortex:
+  myapp:
     server: production
     engine: postgres
     database:
-      name: cortex
+      name: myapp
       user: postgres
     files:
-      paths: [/var/www/cortex/uploads]
+      paths: [/var/www/myapp/uploads]
       exclude: ["*.tmp"]
     destinations: [local, s3]
 
   # Database only
-  quickbill-db:
+  blog-db:
     server: production
     engine: mysql
     database:
-      name: quickbill
+      name: blog
       user: root
     destinations: [local, s3]
 
@@ -257,15 +257,69 @@ Override per job during setup or in the config file.
 
 ## Scheduling
 
+Keepr ships with a `cron` command that prints suggested crontab entries (with the absolute path to the `keepr` binary so cron's minimal `PATH` isn't a problem).
+
 ```bash
 keepr cron
 ```
 
-Outputs cron lines for `crontab -e`:
+Outputs lines like:
 ```cron
-0 3 * * * keepr run --all >> /var/log/keepr.log 2>&1
-0 5 * * * keepr cleanup >> /var/log/keepr.log 2>&1
+# keepr - paste into crontab (crontab -e)
+0 3 * * * /root/.local/bin/keepr run --all >> /var/log/keepr.log 2>&1
+# 0 5 * * * /root/.local/bin/keepr cleanup >> /var/log/keepr.log 2>&1
 ```
+
+### Install in one shot
+
+If the crontab is currently empty:
+```bash
+(keepr cron; echo) | crontab -
+```
+
+If you already have entries, append:
+```bash
+(crontab -l; keepr cron) | crontab -
+```
+
+Verify:
+```bash
+crontab -l
+```
+
+### Gotchas
+
+Cron runs in a stripped environment — your shell rc files are **not** loaded. Four things commonly bite people:
+
+| Issue | Fix |
+|-------|-----|
+| `keepr: command not found` in cron | `keepr cron` already emits the absolute path. Don't shorten it. |
+| `permission denied` on `/var/run/docker.sock` (docker mode) | Run cron as root, or add the cron user to the `docker` group: `sudo usermod -aG docker <user>` |
+| `Unable to locate credentials` (S3) | Put AWS credentials in `~/.aws/credentials` or directly in `keepr.yml` — env vars set in `~/.bashrc` won't be visible to cron. |
+| `permission denied: /var/log/keepr.log` | Either run cron as root, or change the path to a writable location (e.g. `~/keepr.log`). |
+
+### Recommended: run as root
+
+For a single-purpose backup box, root cron is by far the simplest — no docker group setup, no log file permission dance, no missing env vars:
+
+```bash
+sudo su -
+pipx install git+https://github.com/odbs-tech/keepr-backup.git
+keepr init
+keepr run --all                          # smoke test
+(keepr cron; echo) | crontab -
+crontab -l                               # verify
+```
+
+### Troubleshooting
+
+```bash
+tail -f /var/log/keepr.log               # see backup output
+journalctl -u cron -f                    # see when cron fired
+keepr list                               # confirm catalog updated
+```
+
+If a backup runs in cron but fails silently, run it manually with `keepr run <job>` to see the full traceback.
 
 ## File Naming
 
@@ -273,6 +327,6 @@ Outputs cron lines for `crontab -e`:
 {job}_{YYYYMMDD}_{HHMMSS}_{engine}.{ext}
 ```
 
-- `cortex_20260415_030000_postgres.dump`
-- `cortex_20260415_030000_files.tar.gz`
-- `quickbill-db_20260415_030000_mysql.sql.gz`
+- `myapp_20260415_030000_postgres.dump`
+- `myapp_20260415_030000_files.tar.gz`
+- `blog-db_20260415_030000_mysql.sql.gz`

@@ -66,7 +66,7 @@ class ServerConfig(BaseModel):
 
 class DockerConfig(BaseModel):
     """Run dump/restore inside a Docker container via `docker exec`."""
-    container: str  # Container name or ID (e.g. "cortex-postgres-1")
+    container: str  # Container name or ID (e.g. "myapp_postgres_1")
     user: str | None = None  # Optional --user flag for docker exec
 
 
