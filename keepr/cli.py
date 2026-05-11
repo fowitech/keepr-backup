@@ -830,7 +830,11 @@ def _prompt_s3_config() -> dict:
     """Prompt for S3 config fields and return dict."""
     bucket = typer.prompt("    S3 bucket")
     region = typer.prompt("    Region", default="eu-central-1")
-    prefix_raw = typer.prompt("    Prefix (folder, e.g. 'keepr' — empty = bucket root)", default="keepr")
+    prefix_raw = typer.prompt(
+        "    Prefix (folder inside bucket, blank = bucket root)",
+        default="",
+        show_default=False,
+    )
     # Normalize: strip slashes/spaces; storage adds the separator itself.
     prefix = prefix_raw.strip().strip("/")
     access_key = typer.prompt("    Access Key ID (empty = from env)", default="", show_default=False)

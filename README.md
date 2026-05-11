@@ -28,6 +28,20 @@ cd keepr-backup
 pip install -e .
 ```
 
+> **First time using pipx?** Pipx installs binaries to `~/.local/bin`, which isn't on `PATH` by default on a fresh server. After installing, run:
+> ```bash
+> pipx ensurepath
+> ```
+> Then **open a new shell** (or `source ~/.bashrc` / `source ~/.zshrc`) so the updated `PATH` takes effect. If `keepr --help` works, you're set.
+>
+> Don't have pipx yet?
+> ```bash
+> # Debian/Ubuntu
+> sudo apt install pipx
+> # macOS
+> brew install pipx
+> ```
+
 Update:
 ```bash
 pipx install --force git+https://github.com/odbs-tech/keepr-backup.git
@@ -305,6 +319,7 @@ For a single-purpose backup box, root cron is by far the simplest — no docker 
 ```bash
 sudo su -
 pipx install git+https://github.com/odbs-tech/keepr-backup.git
+pipx ensurepath && source ~/.bashrc      # so `keepr` is on PATH
 keepr init
 keepr run --all                          # smoke test
 (keepr cron; echo) | crontab -
