@@ -203,9 +203,40 @@ jobs:
 |------|-------------|-------------|
 | **Direct** | `pg_dump -h remote_host` runs on your machine | DB port is accessible |
 | **SSH** | `ssh server "pg_dump"` runs on the remote server | DB port not exposed, more secure |
+| **Docker** | `docker exec <container> pg_dump …` (locally or via SSH) | DB runs in a container — no client install needed on host |
 
 If the selected server is remote (SSH), dump runs on the server.
 If the server is `local`, dump runs on your machine (direct connection).
+
+### Docker mode
+
+When your database runs in a Docker container, set `database.docker.container` and keepr will run the dump *inside* the container via `docker exec`. This means:
+
+- **No `pg_dump`/`mysqldump` on the host** — the container ships its own matching version.
+- **No exposed DB port** — keepr talks to the container, not the network.
+- **Version is always correct** — `pg_dump` 17 dumping a Postgres 17 DB.
+
+```yaml
+jobs:
+  app-db-docker:
+    server: production         # SSH server, or `local` if keepr lives on the same box
+    type: database
+    engine: postgres
+    database:
+      name: myapp
+      user: postgres
+      password: secret         # forwarded into the container via -e PGPASSWORD
+      docker:
+        container: myapp_postgres_1
+        # user: postgres        # optional --user for `docker exec`
+    destinations: [local, s3]
+```
+
+The wizard (`keepr init` / `keepr job add`) asks **"Running in a Docker container?"** — answer yes and provide the container name. Host/port prompts are skipped automatically.
+
+Requirements on the box where the dump runs:
+- `docker` CLI access (cron user must be in the `docker` group, or cron runs as root)
+- Container is running when the backup fires
 
 ## Destinations
 

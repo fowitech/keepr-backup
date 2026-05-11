@@ -109,3 +109,110 @@ jobs:
     retention:
       keep_server: 3
       keep_s3: 30
+
+  # PostgreSQL inside a Docker container on the remote server.
+  # pg_dump runs inside the container (uses the matching version automatically) —
+  # host does not need postgresql-client installed and DB port doesn't need to be exposed.
+  app-db-docker:
+    server: production
+    type: database
+    engine: postgres
+    database:
+      name: myapp
+      user: postgres
+      password: secret              # forwarded via `docker exec -e PGPASSWORD`
+      docker:
+        container: myapp_postgres_1
+        # user: postgres             # optional --user flag for docker exec
+    destinations: [local, s3]
+
+  # MySQL in Docker — same pattern
+  app-mysql-docker:
+    server: production
+    type: database
+    engine: mysql
+    database:
+      name: myapp
+      user: appuser
+      password: secret              # forwarded via `docker exec -e MYSQL_PWD`
+      docker:
+        container: myapp_mysql_1
+    destinations: [local, s3]
+
+  # Docker with custom --user (e.g. when the container runs as a non-root user)
+  staging-db-docker:
+    server: staging
+    type: database
+    engine: postgres
+    database:
+      name: staging_db
+      user: postgres
+      password: secret
+      docker:
+        container: staging_postgres_1
+        user: postgres                # docker exec --user postgres
+    destinations: [s3]
+    retention:
+      keep_s3: 14
+
+  # Docker-compose style — service container named with project + service + index.
+  # If you run `docker compose -p api up`, the container is typically `api-db-1`.
+  api-db-compose:
+    server: production
+    type: database
+    engine: postgres
+    database:
+      name: api
+      user: postgres
+      password: secret
+      docker:
+        container: api-db-1
+    destinations: [local, s3]
+
+  # Database + uploaded files together — DB in docker, files on host disk
+  app-full-docker:
+    server: production
+    type: database
+    engine: postgres
+    database:
+      name: myapp
+      user: postgres
+      password: secret
+      docker:
+        container: myapp_postgres_1
+    files:
+      paths:
+        - /var/www/myapp/storage/uploads
+      exclude:
+        - "*.tmp"
+        - "cache/"
+    destinations: [local, s3]
+
+  # Local development — keepr running on your laptop, dumping a local docker DB
+  dev-db-docker:
+    server: local
+    type: database
+    engine: postgres
+    database:
+      name: devdb
+      user: postgres
+      password: devpass
+      docker:
+        container: dev-postgres
+    destinations: [local]
+    retention:
+      keep_local: 3
+
+  # MySQL with extra mysqldump args (e.g. skip specific tables)
+  reports-mysql-docker:
+    server: production
+    type: database
+    engine: mysql
+    database:
+      name: reports
+      user: reports
+      password: secret
+      extra_args: "--ignore-table=reports.session_log --no-tablespaces"
+      docker:
+        container: reports_mysql_1
+    destinations: [s3]

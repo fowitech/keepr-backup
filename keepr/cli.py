@@ -621,17 +621,31 @@ def _prompt_job(data: dict, name: str | None) -> None:
         if engine == "sqlite":
             db["path"] = typer.prompt("    Path")
         else:
-            if not is_ssh:
-                output.info("Connection: direct (dump runs here)")
-                db["host"] = typer.prompt("    DB host")
-                job_data["connection"] = "direct"
-            else:
-                output.info("Connection: SSH (dump runs on server)")
-                db["host"] = typer.prompt("    DB host (on server)", default="localhost")
-                job_data["connection"] = "ssh"
+            is_docker = typer.confirm("    Running in a Docker container?", default=False)
 
-            default_port = "5432" if engine == "postgres" else "3306"
-            db["port"] = int(typer.prompt("    DB port", default=default_port))
+            if is_docker:
+                container = typer.prompt("    Container name")
+                docker_cfg: dict = {"container": container}
+                container_user = typer.prompt("    docker --user (optional)", default="")
+                if container_user:
+                    docker_cfg["user"] = container_user
+                db["docker"] = docker_cfg
+                where = "on server" if is_ssh else "here"
+                output.info(f"Connection: docker exec ({where})")
+                job_data["connection"] = "ssh+docker" if is_ssh else "docker"
+            else:
+                if not is_ssh:
+                    output.info("Connection: direct (dump runs here)")
+                    db["host"] = typer.prompt("    DB host")
+                    job_data["connection"] = "direct"
+                else:
+                    output.info("Connection: SSH (dump runs on server)")
+                    db["host"] = typer.prompt("    DB host (on server)", default="localhost")
+                    job_data["connection"] = "ssh"
+
+                default_port = "5432" if engine == "postgres" else "3306"
+                db["port"] = int(typer.prompt("    DB port", default=default_port))
+
             db["name"] = typer.prompt("    DB name")
             default_user = "postgres" if engine == "postgres" else "root"
             db["user"] = typer.prompt("    DB user", default=default_user)
@@ -651,8 +665,8 @@ def _prompt_job(data: dict, name: str | None) -> None:
                 fmt = _prompt_choice("Select", ["1", "2"], default="1")
                 db["format"] = "sql" if fmt == "2" else "custom"
 
-        # Binary path detection (only for direct connection)
-        if not is_ssh:
+        # Binary path detection (only when dumping directly on this machine — skip for docker/ssh)
+        if not is_ssh and not db.get("docker"):
             binary_name = {"postgres": "pg_dump", "mysql": "mysqldump", "sqlite": "sqlite3"}[engine]
             detected = shutil.which(binary_name)
             if detected:

@@ -64,6 +64,12 @@ class ServerConfig(BaseModel):
         return self.host in ("localhost", "127.0.0.1")
 
 
+class DockerConfig(BaseModel):
+    """Run dump/restore inside a Docker container via `docker exec`."""
+    container: str  # Container name or ID (e.g. "cortex-postgres-1")
+    user: str | None = None  # Optional --user flag for docker exec
+
+
 class DatabaseConfig(BaseModel):
     name: str | None = None
     path: str | None = None  # SQLite only
@@ -74,6 +80,7 @@ class DatabaseConfig(BaseModel):
     format: str = "custom"  # "custom" (.dump) or "sql" (.sql.gz)
     dump_path: str | None = None  # Custom path to pg_dump/mysqldump binary
     extra_args: str | None = None
+    docker: DockerConfig | None = None  # Run dump inside a container
 
 
 class FilesConfig(BaseModel):
